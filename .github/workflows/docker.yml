@@ -1,0 +1,33 @@
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - 'Adastral.Cockatoo.WebApi/**/*'
+      - 'Adastral.Cockatoo.Services.WebApi/**/*'
+      - 'Adastral.Cockatoo.Services.WebApi.Models/**/*'
+      - 'Adastral.Cockatoo.Common/**/*'
+      - 'Adastral.Cockatoo.DataAccess/**/*'
+      - 'Adastral.Cockatoo.Services/**/*'
+      - 'Dockerfile'
+      - '*/Dockerfile'
+      - '.github/workflows/docker.yml'
+
+jobs:
+  build_dev:
+    strategy:
+      matrix:
+        cockatoo:
+          - containerName: 'cockatoo-webapi'
+            dockerfileLocation: Dockerfile
+            dockerfileContext: .
+            tag: 'latest'
+
+    runs-on: ubuntu-latest
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+    steps:
+      - uses: 'actions/checkout@v4'
+      - name: 'Build Container'
+        shell: bash
+        run: docker build -t ${{ matrix.cockatoo.containerName }} -f ${{ matrix.cockatoo.dockerfileLocation }} .

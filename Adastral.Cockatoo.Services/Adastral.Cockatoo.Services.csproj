@@ -1,0 +1,22 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\Adastral.Cockatoo.Services.Core\Adastral.Cockatoo.Services.Core.csproj" />
+      <ProjectReference Include="..\Adastral.Cockatoo.Common\Adastral.Cockatoo.Common.csproj" />
+      <ProjectReference Include="..\Adastral.Cockatoo.DataAccess\Adastral.Cockatoo.DataAccess.csproj" />
+      <ProjectReference Include="..\Adastral.Cockatoo.Services.WebApi.Models\Adastral.Cockatoo.Services.WebApi.Models.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="AWSSDK.S3" Version="3.7.400.2" />
+      <PackageReference Include="FluentScheduler" Version="5.5.1" />
+      <PackageReference Include="MongoDB.Bson" Version="2.28.0" />
+    </ItemGroup>
+
+</Project>
