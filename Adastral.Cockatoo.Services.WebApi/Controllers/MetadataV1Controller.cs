@@ -1,6 +1,6 @@
-﻿using Adastral.Cockatoo.Common;
+﻿using System.Reflection;
+using Adastral.Cockatoo.Common;
 using Adastral.Cockatoo.Services.WebApi.Models.Response;
-using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -23,7 +23,7 @@ public class MetadataV1Controller : Controller
         var data = Json(
             new MetadataV1Response()
             {
-                Version = GetType().Assembly.GetName().Version?.ToString() ?? "unknown",
+                Version = Assembly.GetEntryAssembly()?.GetName().Version?.ToString() ?? "unknown",
                 InstanceId = CoreContext.Instance?.Id,
                 PublicUrl = _config.PublicUrl,
                 PartnerUrl = _config.PartnerUrl,
