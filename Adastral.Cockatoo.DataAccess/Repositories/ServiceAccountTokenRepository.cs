@@ -37,7 +37,7 @@ namespace Adastral.Cockatoo.DataAccess.Repositories
                 var current = new BsonTimestamp(DateTimeOffset.UtcNow.ToUnixTimeSeconds());
                 var x = Builders<ServiceAccountTokenModel>
                     .Filter
-                    .Where(v => v.ExpiresAtTimestamp != null);
+                    .Where(v => v.ExpiresAtTimestamp == null);
                 x |= Builders<ServiceAccountTokenModel>
                     .Filter
                     .Where(v => v.ExpiresAtTimestamp < current);
@@ -56,7 +56,7 @@ namespace Adastral.Cockatoo.DataAccess.Repositories
                 var current = new BsonTimestamp(DateTimeOffset.UtcNow.ToUnixTimeSeconds());
                 var x = Builders<ServiceAccountTokenModel>
                     .Filter
-                    .Where(v => v.ExpiresAtTimestamp != null);
+                    .Where(v => v.ExpiresAtTimestamp == null);
                 x |= Builders<ServiceAccountTokenModel>
                     .Filter
                     .Where(v => v.ExpiresAtTimestamp < current);
@@ -75,7 +75,7 @@ namespace Adastral.Cockatoo.DataAccess.Repositories
                 var current = new BsonTimestamp(DateTimeOffset.UtcNow.ToUnixTimeSeconds());
                 var x = Builders<ServiceAccountTokenModel>
                     .Filter
-                    .Where(v => v.ExpiresAtTimestamp != null);
+                    .Where(v => v.ExpiresAtTimestamp == null);
                 x |= Builders<ServiceAccountTokenModel>
                     .Filter
                     .Where(v => v.ExpiresAtTimestamp < current);
