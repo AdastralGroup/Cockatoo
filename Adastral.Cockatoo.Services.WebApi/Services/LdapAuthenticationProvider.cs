@@ -1,9 +1,10 @@
-using System.DirectoryServices.Protocols;
 using System.Security.Claims;
 using System.Text;
 using Adastral.Cockatoo.Common;
 using Microsoft.Extensions.DependencyInjection;
 using NLog;
+using Novell.Directory.Ldap;
+using Logger = NLog.Logger;
 
 namespace Adastral.Cockatoo.Services.WebApi;
 
@@ -43,68 +44,37 @@ public class LdapAuthenticationProvider : BaseService, IDirectAuthenticationProv
             return false;
         try
         {
-            var searchResults = SearchInAD(
-                username,
-                password,
-                SearchScope.Subtree);
-
-            var results = searchResults.Entries.Cast<SearchResultEntry>().Where(v => v.DistinguishedName.ToLower().StartsWith($"cn={username},"));
-            if (results.Any())
-            {
-                var resultEntry = results.First();
-                var groups = resultEntry.Attributes["memberOf"];
-                var groupStringList = new List<string>();
-                foreach (var x in groups)
-                {
-                    var groupNameBytes = x as byte[];
-                    if (groupNameBytes == null)
-                        continue;
-                    var name = Encoding.Default.GetString(groupNameBytes).ToLower().Trim();
-                    groupStringList.Add(name);
-                }
-                var requiredGroup = _config.Ldap.RequiredGroup.Replace("$basedn", _config.Ldap.BaseDN);
-                if (!string.IsNullOrEmpty(requiredGroup))
-                {
-                    bool found = false;
-                    foreach (var x in groups)
-                    {
-                        var groupNameBytes = x as byte[];
-                        if (groupNameBytes == null)
-                            continue;
-                        var name = Encoding.Default.GetString(groupNameBytes).ToLower().Trim();
-                        if (name == requiredGroup.Trim().ToLower())
-                        {
-                            found = true;
-                            break;
-                        }
-                    }
-                    if (!found)
-                    {
-                        _log.Debug($"User {username} is not in group {requiredGroup}");
-                        return false;
-                    }
-                }
-
-                var claims = new List<Claim>()
-                {
-                    new (ClaimTypes.NameIdentifier, resultEntry.Attributes["uid"][0].ToString()!),
-                    new (ClaimTypes.Name, resultEntry.Attributes["name"][0].ToString()!),
-                    new (ClaimTypes.Email, resultEntry.Attributes["mail"][0].ToString()!)
-                };
-
-                var identity = new ClaimsIdentity(
-                    claims,
-                    "LDAP",
-                    ClaimTypes.Name,
-                    ClaimTypes.Role);
-                principal = new ClaimsPrincipal(identity);
-                return true;
-            }
-            else
-            {
-                _log.Warn($"Could not find user {username}");
+            var ldapUser = LocateLdapUser(username);
+            if (ldapUser == null)
                 return false;
+            using (var currentUserConnection = ConnectToLdap(ldapUser.Dn, password))
+            {
+                if (!currentUserConnection.Bound)
+                    return false;
             }
+            var nameIdentAttr = GetAttribute(ldapUser, "uid");
+            var nameAttr = GetAttribute(ldapUser, "name");
+            var emailAttr = GetAttribute(ldapUser, "email");
+            var claimList = new List<Claim>();
+            if (nameIdentAttr != null)
+            {
+                claimList.Add(new Claim(ClaimTypes.NameIdentifier, nameIdentAttr.StringValue));
+            }
+            if (nameAttr != null)
+            {
+                claimList.Add(new Claim(ClaimTypes.Name, nameAttr.StringValue));
+            }
+            if (emailAttr != null)
+            {
+                claimList.Add(new Claim(ClaimTypes.Email, emailAttr.StringValue));
+            }
+            var identity = new ClaimsIdentity(
+                claimList,
+                "LDAP",
+                ClaimTypes.Name,
+                ClaimTypes.Role);
+            principal = new ClaimsPrincipal(identity);
+            return true;
         }
         catch (Exception ex)
         {
@@ -116,55 +86,206 @@ public class LdapAuthenticationProvider : BaseService, IDirectAuthenticationProv
         }
         return false;
     }
-    private SearchResponse SearchInAD(
-        string username,
-        string password,
-        SearchScope scope,
-        params string[] extraAttributes)
+    public LdapAttribute? GetAttribute(LdapEntry userEntry, string attr)
     {
-        if (string.IsNullOrEmpty(_config.Ldap.Server))
+        var attributeSet = userEntry.GetAttributeSet();
+        if (attributeSet.ContainsKey(attr))
         {
-            throw new InvalidConfigurationValueException(
-                $"Server address is required for LDAP functionality",
-                nameof(_config.Ldap.Server),
-                _config.Ldap);
+            return attributeSet.GetAttribute(attr);
         }
 
-        var searchQuery = _config.Ldap.SearchQuery.Replace("$basedn", _config.Ldap.BaseDN);
-        var basedn = _config.Ldap.BaseDN;
-        string[] attrs = [
-            ..extraAttributes,
-            .._config.Ldap.Attributes
-        ];
-
-        var authType = AuthType.Basic;
-
-        username = _config.Ldap.Formatting.Username
-            .Replace("$1", username)
-            .Replace("$basedn", _config.Ldap.BaseDN);
-
-        var connection = new LdapConnection(
-            new LdapDirectoryIdentifier(_config.Ldap.Server, _config.Ldap.Port))
-        {
-            AuthType = authType,
-            Credential = new(username, password)
-        };
-
-        // the default one is v2 (at least in that version), and it is unknown if v3
-        // is actually needed, but at least Synology LDAP works only with v3,
-        // and since our Exchange doesn't complain, let it be v3
-        connection.SessionOptions.ProtocolVersion = 3;
-
-        if (_config.Ldap.Secure)
-        {
-            connection.SessionOptions.SecureSocketLayer = true;
-        }
-
-        connection.Bind();
-
-        _log.Debug($"Searching scope: [{scope}], target: [{basedn}], query: [{searchQuery}]");
-        var request = new SearchRequest(basedn, searchQuery, scope, attrs);
-
-        return (SearchResponse)connection.SendRequest(request);
+        _log.Warn("LDAP attribute {Attr} not found for user {User}", attr, userEntry.Dn);
+        return null;
     }
+    private static string SanitizeFilter(string input)
+    {
+        StringBuilder sanitizedinput = new StringBuilder();
+
+        foreach (char c in input)
+        {
+            switch (c)
+            {
+                case '\\':
+                    sanitizedinput.Append("\\5c");
+                    break;
+                case '*':
+                    sanitizedinput.Append("\\2a");
+                    break;
+                case '(':
+                    sanitizedinput.Append("\\28");
+                    break;
+                case ')':
+                    sanitizedinput.Append("\\29");
+                    break;
+                case '\u0000': // Null character
+                    sanitizedinput.Append("\\00");
+                    break;
+                default:
+                    sanitizedinput.Append(c);
+                    break;
+            }
+        }
+
+        return sanitizedinput.ToString();
+    }
+    private LdapEntry? LocateLdapUser(string username)
+    {
+        using var ldapClient = ConnectToLdap();
+
+        if (!ldapClient.Connected)
+        {
+            return null;
+        }
+
+        ldapClient.Constraints = GetSearchConstraints(
+            ldapClient,
+            _config.Ldap.ServiceAccount.Username.Replace("$basedn", _config.Ldap.BaseDN),
+            _config.Ldap.ServiceAccount.Password);
+
+        string sanitizedUsername = SanitizeFilter(username);
+
+        string realSearchFilter = _config.Ldap.SearchFilter.Value
+            .Replace("$basedn", _config.Ldap.BaseDN);
+        if (realSearchFilter.Contains("$username"))
+        {
+            realSearchFilter = realSearchFilter.Replace("$username", username);
+        }
+        else
+        {
+            var b = new StringBuilder()
+                .Append("(&")
+                .Append(_config.Ldap.SearchFilter.Value.Replace("$basedn", _config.Ldap.BaseDN))
+                .Append("(|");
+
+            foreach (var attr in _config.Ldap.SearchFilter.Attributes)
+            {
+                b.Append($"({attr}={sanitizedUsername})");
+            }
+            b.Append("))");
+            realSearchFilter = b.ToString();
+        }
+
+        _log.Debug(
+            "LDAP Search: {BaseDn} {realSearchFilter} @ {LdapServer}",
+            _config.Ldap.BaseDN,
+            realSearchFilter,
+            _config.Ldap.Server);
+
+        ILdapSearchResults ldapUsers;
+
+        string[] attrs = _config.Ldap.Attributes;
+
+        try
+        {
+            ldapUsers = ldapClient.Search(
+                _config.Ldap.BaseDN,
+                LdapConnection.ScopeSub,
+                realSearchFilter,
+                attrs,
+                false);
+        }
+        catch (LdapException e)
+        {
+            _log.Error(e, "Failed to filter users with: {Filter}", realSearchFilter);
+            throw new ApplicationException("Error completing LDAP login while applying user filter.", e);
+        }
+
+        if (ldapUsers.HasMore())
+        {
+            LdapEntry ldapUser = ldapUsers.Next();
+
+            if (ldapUsers.HasMore())
+            {
+                _log.Warn("More than one LDAP result matched; using first result only.");
+            }
+
+            _log.Debug("LDAP User: {ldapUser}", ldapUser);
+
+            return ldapUser;
+        }
+        else
+        {
+            _log.Error("Found no users matching {Username} in LDAP search", username);
+            throw new ApplicationException("Found no LDAP users matching provided username.");
+        }
+    }
+    private LdapSearchConstraints GetSearchConstraints(
+            LdapConnection ldapClient, string dn, string password)
+    {
+        var constraints = ldapClient.SearchConstraints;
+        constraints.ReferralFollowing = true;
+        constraints.setReferralHandler(new LdapAuthHandler(_log, dn, password));
+        return constraints;
+    }
+
+    private LdapConnectionOptions GetConnectionOptions()
+    {
+        var connectionOptions = new LdapConnectionOptions();
+        if (_config.Ldap.UseSsl)
+        {
+            connectionOptions.UseSsl();
+        }
+
+        return connectionOptions;
+    }
+    private LdapConnection ConnectToLdap(string? userDn = null, string? userPassword = null)
+    {
+        bool initialConnection = userDn == null;
+        if (initialConnection)
+        {
+            userDn = _config.Ldap.ServiceAccount.Username.Replace("$basedn", _config.Ldap.BaseDN);
+            userPassword = _config.Ldap.ServiceAccount.Password;
+        }
+
+        // not using `using` for the ability to return ldapClient, need to dispose this manually on exception
+        var ldapClient = new LdapConnection(GetConnectionOptions());
+        try
+        {
+            ldapClient.Connect(_config.Ldap.Server, _config.Ldap.Port);
+            if (_config.Ldap.Secure)
+            {
+                ldapClient.StartTls();
+            }
+
+            _log.Debug("Trying bind as user {UserDn}", userDn);
+            ldapClient.Bind(userDn, userPassword);
+        }
+        catch (Exception e)
+        {
+            ldapClient.Dispose();
+
+            _log.Error(e, "Failed to Connect or Bind to server as user {UserDn}", userDn);
+            var message = initialConnection
+                ? "Failed to Connect or Bind to server."
+                : "Error completing LDAP login. Invalid username or password.";
+            throw new ApplicationException(message);
+        }
+
+        return ldapClient;
+    }
+}
+
+internal sealed class LdapAuthHandler : ILdapAuthHandler
+{
+        private readonly ILogger _log;
+        private readonly LdapAuthProvider _provider;
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="LdapAuthHandler" /> class.
+        /// </summary>
+        /// <param name="logger">Instance of the <see cref="ILogger"/> interface.</param>
+        /// <param name="dn">The distinguished name to use when authenticating to the server.</param>
+        /// <param name="password">The password to use when authenticating to the server.</param>
+        public LdapAuthHandler(ILogger logger, string dn, string password)
+        {
+            _log = logger;
+            _provider = new LdapAuthProvider(dn, Encoding.UTF8.GetBytes(password));
+        }
+
+        /// <inheritdoc />
+        public LdapAuthProvider GetAuthProvider(string host, int port)
+        {
+            _log.Debug("Referred to {Host}:{Port}. Trying bind as user {Dn}", host, port, _provider.Dn);
+            return _provider;
+        }
 }

@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Security.Claims;
 using Adastral.Cockatoo.Common;
 using Adastral.Cockatoo.DataAccess.Models;
@@ -57,8 +58,9 @@ public class AuthWebService : BaseService
                     {
                         continue;
                     }
-                    var username = dec.Substring(0, dec.IndexOf(":") + 1);
-                    var password = dec.Substring(dec.IndexOf(":") + 1, dec.Length + dec.IndexOf(":") + 1);
+                    var sepIndex = dec.IndexOf(":") + 1;
+                    var username = dec.Substring(0, Math.Max(sepIndex - 1, 0));
+                    var password = dec.Substring(sepIndex, dec.Length - sepIndex);
                     if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
                         continue;
                     var check = await HandleSignInDirect(context, username, password);
@@ -113,13 +115,13 @@ public class AuthWebService : BaseService
     }
     public async Task<UserModel?> GetCurrentUser(HttpContext context)
     {
-        if (TryGetCurrentUserViaToken(context, out var tokenUser))
-        {
-            return tokenUser;
-        }
         if (context.User.Identity?.IsAuthenticated ?? false)
         {
             return await GetOrCreateUser((ClaimsIdentity)context.User.Identity!);
+        }
+        else if (TryGetCurrentUserViaToken(context, out var tokenUser))
+        {
+            return tokenUser;
         }
         return null;
     }
@@ -188,11 +190,12 @@ public class AuthWebService : BaseService
                     {
                         continue;
                     }
-                    var username = dec.Substring(0, dec.IndexOf(":") + 1);
-                    var password = dec.Substring(dec.IndexOf(":") + 1, dec.Length + dec.IndexOf(":") + 1);
+                    var sepIndex = dec.IndexOf(":") + 1;
+                    var username = dec.Substring(0, Math.Max(sepIndex - 1, 0));
+                    var password = dec.Substring(sepIndex, dec.Length - sepIndex);
                     if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
                         continue;
-                    var check = await HandleSignInDirect(context, username, password);
+                    await HandleSignInDirect(context, username, password);
                     if (context.User.Identity?.IsAuthenticated ?? false)
                     {
                         return await GetOrCreateUser((ClaimsIdentity)context.User.Identity!);
@@ -232,6 +235,7 @@ public class AuthWebService : BaseService
                 try
                 {
                     await httpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal!);
+                    httpContext.User = principal!;
                 }
                 catch (Exception ex)
                 {
@@ -241,11 +245,15 @@ public class AuthWebService : BaseService
                 try
                 {
 
-                var claimIdent = principal!.Identities.FirstOrDefault()!;
-                if (principal!.Identity?.IsAuthenticated ?? false && claimIdent != null)
-                {
-                    await GetOrCreateUser(claimIdent);
-                }
+                    var claimIdent = principal!.Identities.FirstOrDefault()!;
+                    if (principal!.Identity?.IsAuthenticated ?? false && claimIdent != null)
+                    {
+                        await GetOrCreateUser(claimIdent);
+                    }
+                    else
+                    {
+                        _log.Warn($"name={item.GetName()}|Weird, user isn't authenticated, but they were successfully signed in?");
+                    }
                 }
                 catch (Exception ex)
                 {
