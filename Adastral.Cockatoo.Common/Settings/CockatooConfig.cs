@@ -912,14 +912,14 @@ public class CockatooLdapSearchFilter
 {
     [InfisicalPath("LDAP")]
     [InfisicalKey("SearchFilter")]
-    [EnvironmentKeyName("LDAP_SEARCHFILTER")]
+    [EnvironmentKeyName("LDAP_SEARCH_FILTER")]
     [XmlAttribute(nameof(Value))]
     [DefaultValue("")]
     public string Value { get; set; } = "";
 
     [InfisicalPath("LDAP")]
     [InfisicalKey("SearchFilterAttributes")]
-    [EnvironmentKeyName("LDAP_SEARCHFILTER_ATTRIBUTES")]
+    [EnvironmentKeyName("LDAP_SEARCH_FILTER_ATTRIBUTES")]
     [XmlElement("AttributeItem")]
     public string[] Attributes { get; set; } = [];
 }
