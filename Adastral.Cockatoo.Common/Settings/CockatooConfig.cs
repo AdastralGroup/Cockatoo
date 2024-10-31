@@ -878,6 +878,13 @@ public class CockatooLdapConfig
     public bool Secure { get; set; } = false;
 
     [InfisicalPath("LDAP")]
+    [InfisicalKey("UseSsl")]
+    [EnvironmentKeyName("LDAP_SSL")]
+    [DefaultValue(false)]
+    [XmlElement(nameof(UseSsl))]
+    public bool UseSsl {get;set;} = false;
+
+    [InfisicalPath("LDAP")]
     [InfisicalKey("BaseDN")]
     [EnvironmentKeyName("LDAP_BASEDN")]
     [DefaultValue("")]
@@ -885,30 +892,36 @@ public class CockatooLdapConfig
     public string BaseDN { get; set; } = "";
 
     [InfisicalPath("LDAP")]
-    [InfisicalKey("SearchQuery")]
-    [EnvironmentKeyName("LDAP_SEARCH_QUERY")]
-    [DefaultValue("")]
-    [XmlElement(nameof(SearchQuery))]
-    public string SearchQuery { get; set; } = "";
-
-    [InfisicalPath("LDAP")]
     [InfisicalKey("Attributes")]
     [EnvironmentKeyName("LDAP_ATTRIBUTES")]
     [XmlElement(nameof(Attributes))]
     public string[] Attributes { get; set; } = [];
 
-    [InfisicalPath("LDAP")]
-    [InfisicalKey("SearchQuery")]
-    [EnvironmentKeyName("LDAP_REQUIRED_GROUP")]
-    [DefaultValue("")]
-    [XmlElement(nameof(RequiredGroup))]
-    public string RequiredGroup { get; set; } = "";
+    [XmlElement("SearchFilter")]
+    public CockatooLdapSearchFilter SearchFilter { get; set; } = new();
 
     [XmlElement("Formatting")]
     public CockatooLdapFormattingConfig Formatting { get; set; } = new();
 
     [XmlElement("ServiceAccount")]
     public CockatooLdapServiceAccountConfig ServiceAccount { get; set; } = new();
+}
+
+[Category("LDAP - Search Filter")]
+public class CockatooLdapSearchFilter
+{
+    [InfisicalPath("LDAP")]
+    [InfisicalKey("SearchFilter")]
+    [EnvironmentKeyName("LDAP_SEARCH_FILTER")]
+    [XmlAttribute(nameof(Value))]
+    [DefaultValue("")]
+    public string Value { get; set; } = "";
+
+    [InfisicalPath("LDAP")]
+    [InfisicalKey("SearchFilterAttributes")]
+    [EnvironmentKeyName("LDAP_SEARCH_FILTER_ATTRIBUTES")]
+    [XmlElement("AttributeItem")]
+    public string[] Attributes { get; set; } = [];
 }
 
 [Category("LDAP - Service Account")]

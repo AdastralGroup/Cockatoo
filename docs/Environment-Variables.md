@@ -27,8 +27,10 @@ You can modify if Cockatoo should get environment variables from a file, or from
 | `LDAP_SERVER` | string | | No |
 | `LDAP_PORT` | int | `389` | No |
 | `LDAP_SECURE` | bool | `false` | No |
+| `LDAP_SSL` | bool | `false` | No |
 | `LDAP_BASEDN` | string | | No |
-| `LDAP_SEARCH_QUERY` | string | | No |
+| `LDAP_SEARCH_FILTER` | string | | No |
+| `LDAP_SEARCH_FILTER_ATTRIBUTES` | string | | No |
 | `LDAP_ATTRIBUTES` | string[] | | No |
 | `LDAP_REQUIRED_GROUP` | string | | No |
 | `LDAP_FORMAT_USERNAME` | string | `$1` | No |
@@ -83,10 +85,14 @@ Environment variables will override everything, and the XML file will only overr
     <Enable>false</Enable>
     <Server />
     <Port>389</Port>
+    <UseSsl>false</UseSsl>
     <Secure>false</Secure>
     <BaseDN>ou=users,dc=ldap,dc=example,dc=com</BaseDN>
-    <SearchQuery>(&amp;(objectClass=user))</SearchQuery>
-    <RequiredGroup />
+    <SearchFilter Value="(objectClass=user)">
+      <AttributeItem>uid</AttributeItem>
+      <AttributeItem>cn</AttributeItem>
+      <AttributeItem>mail</AttributeItem>
+    </SearchFilter>
     <Formatting>
       <Username>$1</Username>
       <Group>$1</Group>
