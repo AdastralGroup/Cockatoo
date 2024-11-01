@@ -12,6 +12,7 @@ using Adastral.Cockatoo.Services.WebApi;
 using Adastral.Cockatoo.Services.WebApi.Controllers;
 using Adastral.Cockatoo.Services.WebApi.Models;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.OpenApi.Models;
 
 namespace Adastral.Cockatoo.WebApi;
 
@@ -69,12 +70,54 @@ public class Program
         builder.Services.AddMvc(options =>
         {
             options.EnableEndpointRouting = false;
-        })
-                .AddApplicationPart(pluginAssembly);
+        }).AddApplicationPart(pluginAssembly);
         builder.Services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
         // add swagger-related stuff
         builder.Services.AddEndpointsApiExplorer();
-        builder.Services.AddSwaggerGen();
+        builder.Services.AddSwaggerGen(options =>
+        {
+            options.AddSecurityDefinition("basicAuth", new OpenApiSecurityScheme
+            {
+                Description = "Basic Authorization",
+                Name = "Authorization",
+                In = ParameterLocation.Header,
+                Scheme = "basic",
+                Type = SecuritySchemeType.Http
+            });
+            options.AddSecurityDefinition("tokenHeader", new OpenApiSecurityScheme
+            {
+                Description = "Cockatoo Token Header",
+                Name = core.Config.AspNET.TokenHeader,
+                In = ParameterLocation.Header,
+                Type = SecuritySchemeType.ApiKey
+            });
+            options.AddSecurityRequirement(new OpenApiSecurityRequirement
+            {
+                {
+                    new OpenApiSecurityScheme
+                    {
+                        Reference = new OpenApiReference
+                        {
+                            Type = ReferenceType.SecurityScheme,
+                            Id = "basicAuth"
+                        }
+                    },
+                    new string[] {}
+                },
+                {
+                    new OpenApiSecurityScheme
+                    {
+                        Reference = new OpenApiReference
+                        {
+                            Type = ReferenceType.SecurityScheme,
+                            Id = "tokenHeader"
+                        }
+                    },
+                    new string[] {}
+                }
+            });
+            options.OperationFilter<FileUploadFilter>();
+        });
         builder.Services.AddAuthorization();
         var authBuilder = builder.Services.AddAuthentication(
                 options =>
