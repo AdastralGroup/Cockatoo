@@ -14,7 +14,7 @@ namespace Adastral.Cockatoo.Services;
 public class StorageService : BaseService
 {
     private readonly StorageFileRepository _storageFileRepo;
-    private readonly Logger _log = LogManager.GetCurrentClassLogger(); 
+    private readonly Logger _log = LogManager.GetCurrentClassLogger();
     private readonly ApplicationImageRepository _appImageRepo;
     private readonly BullseyeAppRevisionRepository _bullseyeAppRevisionRepo;
     private readonly BullseyePatchRepository _bullseyePatchRepo;
@@ -46,7 +46,7 @@ public class StorageService : BaseService
         {
             location = location.Replace("//", "/");
         }
-        
+
         location = _config.Storage.FileApi.Endpoint + (_config.Storage.FileApi.Endpoint.EndsWith('/') ? "" : "/") + location;
 
         return location;
@@ -99,7 +99,7 @@ public class StorageService : BaseService
             return appImageModel.Sha256Hash;
         }
     }
-    
+
     public async Task<MemoryStream> GetContent(StorageFileModel model)
     {
         if (_config.Storage.S3.Enable)
@@ -158,7 +158,7 @@ public class StorageService : BaseService
             ContentType = MimeTypes.GetMimeType(filename)
         };
         model.Location = $"{model.Id}/{filename}";
-        
+
         content.Seek(0, SeekOrigin.Begin);
         if (_config.Storage.S3.Enable)
         {
@@ -166,6 +166,11 @@ public class StorageService : BaseService
             var s3 = _services.GetRequiredService<S3Service>();
             var s3Obj = await s3.UploadObject(content, model.Location, length);
             model.Sha256Hash = s3Obj.ChecksumSHA256;
+            if (string.IsNullOrEmpty(model.Sha256Hash))
+            {
+                content.Seek(0, SeekOrigin.Begin);
+                model.Sha256Hash = CockatooHelper.GetSha256Hash(content);
+            }
             model.SetSize(s3Obj.ContentLength);
         }
         else
@@ -280,7 +285,7 @@ public class StorageService : BaseService
                     result.AddRange(data.Cast<object>());
                 }
             }));
-        
+
         foreach (var i in taskList)
             i.Start();
         await Task.WhenAll(taskList);
