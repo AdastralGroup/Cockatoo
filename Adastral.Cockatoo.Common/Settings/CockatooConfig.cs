@@ -1139,7 +1139,7 @@ public class CockatooAspNetConfig
     /// <summary>
     /// Enable Swagger in Production (Restart Required)
     /// </summary>
-    [XmlElement]
+    [XmlElement(nameof(SwaggerEnable))]
     [InfisicalPath("/AspNET")]
     [InfisicalKey("EnableSwagger")]
     [DefaultValue(false)]
@@ -1150,7 +1150,7 @@ public class CockatooAspNetConfig
     /// <summary>
     /// Request Header to use when doing token authentication.
     /// </summary>
-    [XmlElement]
+    [XmlElement(nameof(TokenHeader))]
     [InfisicalPath("/AspNET")]
     [InfisicalKey("TokenHeader")]
     [DefaultValue("x-cockatoo-token")]
@@ -1160,7 +1160,7 @@ public class CockatooAspNetConfig
     /// <summary>
     /// Is Cockatoo running behind a Proxy or a Load Balancer?
     /// </summary>
-    [XmlElement]
+    [XmlElement(nameof(BehindProxy))]
     [InfisicalPath("/AspNET")]
     [InfisicalKey("BehindProxy")]
     [DefaultValue(false)]
