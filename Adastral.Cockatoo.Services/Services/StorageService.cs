@@ -168,8 +168,11 @@ public class StorageService : BaseService
             model.Sha256Hash = s3Obj.ChecksumSHA256;
             if (string.IsNullOrEmpty(model.Sha256Hash))
             {
-                content.Seek(0, SeekOrigin.Begin);
-                model.Sha256Hash = CockatooHelper.GetSha256Hash(content);
+                using (var x = await s3.GetObject(model))
+                {
+                    _log.Debug($" [id={model.Id}, filename={filename}] Manually calculating SHA256 sum from AWS. This shouldn't happen, but it did :/");
+                    model.Sha256Hash = CockatooHelper.GetSha256Hash(x.ResponseStream);
+                }
             }
             model.SetSize(s3Obj.ContentLength);
         }

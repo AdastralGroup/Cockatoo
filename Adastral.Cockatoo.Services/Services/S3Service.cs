@@ -10,6 +10,7 @@ using Adastral.Cockatoo.DataAccess.Models;
 using Microsoft.Extensions.DependencyInjection;
 using MongoDB.Driver;
 using NLog;
+using Adastral.Cockatoo.Common.Helpers;
 
 namespace Adastral.Cockatoo.Services;
 
@@ -172,11 +173,15 @@ public class S3Service : BaseService
         using (var tf = File.Open(tmpFileLocation, FileMode.OpenOrCreate))
         {
             await stream.CopyToAsync(tf);
+            tf.Seek(0, SeekOrigin.Begin);
+            LocalFileHashLookup[location] = CockatooHelper.GetSha256Hash(tf);
         }
         await UploadMultipartObject(tmpFileLocation, location);
         _log.Debug($"[location={location}] Deleting temporary file {tmpFileLocation}");
         File.Delete(tmpFileLocation);
     }
+
+    private Dictionary<string, string> LocalFileHashLookup = [];
 
     /// <summary>
     /// Upload a file via the location to S3.
@@ -205,10 +210,12 @@ public class S3Service : BaseService
     /// </remarks>
     public async Task<GetObjectResponse> UploadObject(Stream stream, string location, long? length = null)
     {
+        bool fileWrite = false;
         if (stream.Length == 0 || (length != null && length != stream.Length))
         {
             _log.Debug($"Writing to disk then uploading, since stream length ({stream.Length}) does not match the length provided ({length})");
             await FileWriteThenUploadMultipartObject(stream, location);
+            fileWrite = true;
         }
         else
         {
@@ -220,6 +227,7 @@ public class S3Service : BaseService
                 PartSize = 6291456, // 6 MB.
                 Key = location,
                 ContentType = MimeTypes.GetMimeType(Path.GetFileName(location)),
+                ChecksumAlgorithm = ChecksumAlgorithm.SHA256
             };
             _log.Debug($"[location={location}] Uploading to AWS with {nameof(TransferUtility)}");
             await fileTransferUtility.UploadAsync(fileTransferUtilityRequest);
@@ -227,7 +235,15 @@ public class S3Service : BaseService
 
         await Task.Delay(3000);
 
-        return await GetObject(location);
+        var result = await GetObject(location);
+        if (fileWrite && string.IsNullOrEmpty(result.ChecksumSHA256))
+        {
+            if (LocalFileHashLookup.TryGetValue(location, out var x))
+            {
+                result.ChecksumSHA256 = x;
+            }
+        }
+        return result;
     }
 
 }
