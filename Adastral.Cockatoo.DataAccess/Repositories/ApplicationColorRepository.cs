@@ -45,6 +45,18 @@ public class ApplicationColorRepository : BaseRepository<ApplicationColorModel>
         return res.FirstOrDefault();
     }
 
+    public async Task<long> DeleteById(params string[] ids)
+    {
+        var collection = GetCollection();
+        if (collection == null)
+            throw new NoNullAllowedException($"{nameof(GetCollection)} returned null");
+        var filter = Builders<ApplicationColorModel>
+            .Filter
+            .In(v => v.Id, ids);
+        var result = await collection.DeleteManyAsync(filter);
+        return result.DeletedCount;
+    }
+
     public async Task<ApplicationColorModel> InsertOrUpdate(ApplicationColorModel model)
     {
         if (string.IsNullOrEmpty(model.ApplicationId))
