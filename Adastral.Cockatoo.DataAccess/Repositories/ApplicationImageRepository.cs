@@ -71,6 +71,18 @@ public class ApplicationImageRepository : BaseRepository<ApplicationImageModel>
         return res.ToList().AsReadOnly();
     }
 
+    public async Task<long> DeleteById(params string[] ids)
+    {
+        var collection = GetCollection();
+        if (collection == null)
+            throw new NoNullAllowedException($"{nameof(GetCollection)} returned null");
+        var filter = Builders<ApplicationImageModel>
+            .Filter
+            .In(v => v.Id, ids);
+        var result = await collection.DeleteManyAsync(filter);
+        return result.DeletedCount;
+    }
+
     public async Task<ApplicationImageModel> InsertOrUpdate(ApplicationImageModel model)
     {
         if (string.IsNullOrEmpty(model.ApplicationId))
