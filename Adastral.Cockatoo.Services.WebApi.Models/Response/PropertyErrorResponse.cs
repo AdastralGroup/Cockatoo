@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
+using Adastral.Cockatoo.Common.Helpers;
 
 namespace Adastral.Cockatoo.Services.WebApi.Models.Response;
 
@@ -19,4 +20,10 @@ public class PropertyErrorResponse
     [JsonPropertyName("propType")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? PropertyParentType { get; set; }
+
+    public PropertyErrorResponse WithParentType(Type type)
+    {
+        PropertyParentType = CockatooHelper.FormatTypeName(type);
+        return this
+    }
 }
