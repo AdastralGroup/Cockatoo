@@ -43,6 +43,13 @@ namespace Adastral.Cockatoo.DataAccess.Models
         [Description("User can create service accounts")]
         ServiceAccountCreate,
 
+        /// <summary>
+        /// Can create, delete, and modify <see cref="ClientApiKeyProviderModel"/>
+        /// </summary>
+        [GlobalPermission]
+        [EnumDisplayName("Client API Key Provider (Manager)")]
+        ClientApiKeyProviderManager,
+
         #region User
         /// <summary>
         /// Allow user to administrate/manage any user.
