@@ -94,6 +94,8 @@ internal class EnvironmentFileHandler
             Values.Clear();
             foreach (var x in content)
             {
+                if (x.StartsWith("#"))
+                    continue;
                 var line = x.Substring(x.IndexOf("#") + 1);
                 if (string.IsNullOrEmpty(line))
                     continue;
@@ -103,6 +105,7 @@ internal class EnvironmentFileHandler
                 var key = line.Substring(0, idx);
                 var value = line.Substring(idx + 1);
                 Values[key] = value;
+                Environment.SetEnvironmentVariable(key, value);
             }
         }
     }
