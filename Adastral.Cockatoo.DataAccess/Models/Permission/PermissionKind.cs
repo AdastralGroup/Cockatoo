@@ -34,6 +34,7 @@ namespace Adastral.Cockatoo.DataAccess.Models
         [Description("Full access to all Service Accounts")]
         [PermissionInherit(ServiceAccountCreate)]
         ServiceAccountAdmin,
+
         /// <summary>
         /// Allow user to create service accounts
         /// </summary>
@@ -42,6 +43,7 @@ namespace Adastral.Cockatoo.DataAccess.Models
         [Description("User can create service accounts")]
         ServiceAccountCreate,
 
+        #region User
         /// <summary>
         /// Allow user to administrate/manage any user.
         /// </summary>
@@ -98,7 +100,9 @@ namespace Adastral.Cockatoo.DataAccess.Models
         [EnumDisplayName("User Management - Recalculate Permissions")]
         [Description("User can recalculate permissions for all users.")]
         UserAdminRecalculatePermissions,
+        #endregion
 
+        #region Group
         /// <summary>
         /// Allow user to administrate all Groups.
         /// </summary>
@@ -162,7 +166,9 @@ namespace Adastral.Cockatoo.DataAccess.Models
         [Description("User can delete a group.")]
         [PermissionInherit(GroupAdminViewAll)]
         GroupAdminDelete,
+        #endregion
 
+        #region Application
         [Description("Has full read/write access to Application Details")]
         [PermissionInherit(ApplicationDetailViewAll)]
         [PermissionInherit(ApplicationDetailCreate)]
@@ -186,7 +192,9 @@ namespace Adastral.Cockatoo.DataAccess.Models
         [Description("Can edit the Image, Colors, and any sort of Appearance customization for an Application")]
         [EnumDisplayName("Application - Edit Appearance")]
         ApplicationDetailEditAppearance,
+        #endregion
 
+        #region Application (AutoUpdater.NET)
         [PermissionInherit(ApplicationDetailViewAll)]
         [PermissionInherit(ApplicationDetailAUDNView)]
         [PermissionInherit(ApplicationDetailAUDNDeleteRevision)]
@@ -216,6 +224,8 @@ namespace Adastral.Cockatoo.DataAccess.Models
         [EnumDisplayName("AutoUpdater.NET - Create Revision")]
         [Description("Submit new revision for an Application that is for AutoUpdater.NET")]
         ApplicationDetailAUDNSubmitRevision,
+        #endregion
+
         /// <summary>
         /// User can view all blog posts for an application, no matter what it's IsLive state is.
         /// </summary>
@@ -227,6 +237,7 @@ namespace Adastral.Cockatoo.DataAccess.Models
         [EnumDisplayName("Refresh Southbank")]
         RefreshSouthbank,
 
+        #region Blog
         /// <summary>
         /// Allow user to administrate any aspect of the Blog system
         /// </summary>
@@ -268,7 +279,9 @@ namespace Adastral.Cockatoo.DataAccess.Models
         [Description("User can add or remove tags from a Blog Post")]
         [EnumDisplayName("Blog Post - Update Tags")]
         BlogPostUpdateTags,
+        #endregion
 
+        #region File
         /// <summary>
         /// Allow user to administrate any aspect of the Storage File system
         /// </summary>
@@ -293,7 +306,9 @@ namespace Adastral.Cockatoo.DataAccess.Models
         [Description("Allow user to delete files from Database and from the Storage Provider.")]
         [EnumDisplayName("File Management - Delete")]
         FileDelete,
+        #endregion
 
+        #region Bullseye
         [PermissionInherit(BullseyeGenerateCache)]
         [PermissionInherit(BullseyeRegisterPatch)]
         [PermissionInherit(BullseyeRegisterRevision)]
@@ -377,6 +392,7 @@ namespace Adastral.Cockatoo.DataAccess.Models
         [Description("User can view Bullseye v1/v2 models for non-public applications")]
         [EnumDisplayName("Bullseye Application - View Private Apps")]
         BullseyeViewPrivateModels,
+        #endregion
 
         /// <summary>
         /// Allow the user to login. If OAuth succeeds, it will pretend that they are not authenticated.
